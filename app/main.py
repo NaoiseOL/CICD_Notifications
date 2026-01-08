@@ -2,9 +2,9 @@ import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .bookings_worker import consume_bookings
-from .payments_worker import consume_payments
-from .users_worker import consume_users
+from .bookings_worker import main as bookings
+from .payments_worker import main as payments
+from .users_worker import main as users
 
 app = FastAPI()
 
@@ -18,9 +18,9 @@ app.add_middleware(
 @app.on_event("startup")
 async def start_workers():
     # Launch each worker as a background task
-    asyncio.create_task(consume_bookings())
-    asyncio.create_task(consume_payments())
-    asyncio.create_task(consume_users())
+    asyncio.create_task(bookings())
+    asyncio.create_task(payments())
+    asyncio.create_task(users())
 
 @app.get("/health")
 def health():
