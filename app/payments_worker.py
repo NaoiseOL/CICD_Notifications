@@ -5,18 +5,18 @@ import os
 from .config import RABBIT_URL, QUEUE_NAME
 
 RABBIT_URL = os.getenv("RABBIT_URL")
-EXCHANGE_NAME = "bookings_events_topic"
-QUEUE_NAME = "bookings_notifications"
+EXCHANGE_NAME = "payments_events_topic"
+QUEUE_NAME = "payments_notifications"
 
 
 def build_notification(event_type: str, event: dict):
     pretty_event = json.dumps(event, indent=2)
 
-    title = f"New Booking Event: {event_type}"
+    title = f"New Payment: {event_type}"
     body = (
-        f"A new booking-related event has been received.\n\n"
+        f"A new Payment-related event has been received.\n\n"
         f"Event Type: {event_type}\n"
-        f"Payload:\n{pretty_event}\n"
+        f"Details:\n{pretty_event}\n"
     )
 
     return title, body
@@ -46,7 +46,7 @@ async def main():
     bound = False
     while not bound:
         try:
-            await queue.bind(exchange, routing_key="booking.*")
+            await queue.bind(exchange, routing_key="payment.*")
             bound = True
             print("[WORKER] Queue bound to exchange", flush=True)
         except Exception:

@@ -48,5 +48,14 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  payments_worker:
+    build: .
+    entrypoint: ["python","-u", "-m", "app.payments_worker_entry"]
+    env_file: .env.docker
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    restart: unless-stopped
+
 volumes:
   postgres-data: {}
