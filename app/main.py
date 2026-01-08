@@ -1,8 +1,5 @@
 from fastapi import FastAPI
-import asyncio
-from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
-from .users_worker import main as users_worker
 
 app = FastAPI()
 
