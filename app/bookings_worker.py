@@ -8,26 +8,59 @@ RABBIT_URL = os.getenv("RABBIT_URL")
 EXCHANGE_NAME = "bookings_events_topic"
 QUEUE_NAME = "bookings_notifications"
 
-async def main():
-    connection = await aio_pika.connect_robust(RABBIT_URL)
-    channel = await connection.channel()
 
-    # Declare the topic exchange
-    exchange = await channel.declare_exchange(
-        EXCHANGE_NAME,
-        aio_pika.ExchangeType.TOPIC
+def build_notification(event_type: str, event: dict):
+    pretty_event = json.dumps(event, indent=2)
+
+    title = f"New Booking Event: {event_type}"
+    body = (
+        f"A new booking-related event has been received.\n\n"
+        f"Event Type: {event_type}\n"
+        f"Payload:\n{pretty_event}\n"
     )
 
-    # Declare the queue
+    return title, body
+
+
+async def send_notification(title: str, body: str):
+    print("\n----------- NOTIFICATION -----------")
+    print(f"Title: {title}")
+    print(body)
+    print("------------------------------------\n", flush=True)
+
+
+async def main():
+    connection = None
+
+    while connection is None:
+        try:
+            print("[WORKER] Connecting to RabbitMQ...", flush=True)
+            connection = await aio_pika.connect_robust(RABBIT_URL)
+        except Exception:
+            await asyncio.sleep(2)
+
+    channel = await connection.channel()
+    exchange = await channel.declare_exchange(EXCHANGE_NAME, aio_pika.ExchangeType.TOPIC)
     queue = await channel.declare_queue(QUEUE_NAME, durable=True)
 
-    # BIND THE QUEUE TO THE EXCHANGE (this was missing)
-    await queue.bind(exchange, routing_key="booking.*")
+    bound = False
+    while not bound:
+        try:
+            await queue.bind(exchange, routing_key="booking.*")
+            bound = True
+            print("[WORKER] Queue bound to exchange", flush=True)
+        except Exception:
+            await asyncio.sleep(1)
 
-    print(f"[Bookings_WORKER] Listening on queue '{QUEUE_NAME}'...")
+    print(f"[WORKER] Listening on queue '{QUEUE_NAME}'...", flush=True)
 
     async with queue.iterator() as q:
         async for message in q:
             async with message.process():
                 event = json.loads(message.body)
-                print("[Bookings_WORKER] Received event:", event)
+                event_type = message.routing_key
+
+                print(f"[WORKER] {event_type}: {event}", flush=True)
+
+                title, body = build_notification(event_type, event)
+                await send_notification(title, body)
